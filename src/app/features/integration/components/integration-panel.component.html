@@ -1,0 +1,88 @@
+<mat-card class="integration-card">
+  <mat-card-content>
+    <div class="integration-row">
+      <!-- Left side: Icon and Info -->
+      <div class="left-section">
+        <div class="icon-container" [class.connected]="integrationStatus.connected">
+          <mat-icon class="provider-icon">
+            @if (integrationStatus.connected) {
+              check_circle
+            } @else {
+              radio_button_unchecked
+            }
+          </mat-icon>
+        </div>
+        
+        <div class="info-section">
+          <h2 class="integration-title">GitHub Integration</h2>
+          @if (integrationStatus.connected && integrationStatus.connectedAt) {
+            <p class="integration-subtitle">
+              Connected on {{ integrationStatus.connectedAt | formatDate }} by {{ integrationStatus.user?.username || 'github-user' }}
+            </p>
+          } @else {
+            <p class="integration-subtitle">
+              Connect your GitHub account to sync your repositories, commits, issues, and pull requests
+            </p>
+          }
+        </div>
+      </div>
+      
+      <!-- Right side: Action Buttons -->
+      <div class="right-section">
+        @if (!integrationStatus.connected) {
+          <button 
+            mat-raised-button 
+            color="primary" 
+            class="connect-btn"
+            (click)="connectGithub()"
+            [disabled]="loading">
+            <mat-icon>link</mat-icon>
+            Connect GitHub
+          </button>
+        }
+        
+        @if (integrationStatus.connected) {
+       
+          
+ 
+          
+          <button 
+            mat-icon-button 
+            class="expand-btn"
+            (click)="panelExpanded = !panelExpanded">
+            <mat-icon>@if (panelExpanded) { expand_less } @else { expand_more }</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Expanded Actions -->
+    @if (panelExpanded && integrationStatus.connected) {
+      <div class="expanded-actions">
+        <button 
+          mat-raised-button 
+          color="primary"
+          (click)="resyncIntegration()"
+          [disabled]="syncing">
+          <mat-icon [class.spinning]="syncing">sync</mat-icon>
+          @if (syncing) { Syncing... } @else { Re-sync Integration }
+        </button>
+        
+        <button 
+          mat-raised-button 
+          color="warn"
+          (click)="removeIntegration()"
+          [disabled]="loading">
+          <mat-icon>delete</mat-icon>
+          Remove Integration
+        </button>
+      </div>
+    }
+  </mat-card-content>
+
+  @if (loading && !syncing) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  }
+</mat-card>

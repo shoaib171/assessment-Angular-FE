@@ -1,0 +1,144 @@
+.integration-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e4e8;
+  position: relative;
+  
+  mat-card-content {
+    padding: 24px;
+  }
+  
+  .integration-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    
+    .left-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      min-width: 300px;
+      
+      .icon-container {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #f6f8fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        
+        &.connected {
+          background: #d4edda;
+          
+          .provider-icon {
+            color: #28a745;
+          }
+        }
+        
+        .provider-icon {
+          font-size: 32px;
+          width: 32px;
+          height: 32px;
+          color: #6a737d;
+        }
+      }
+      
+      .info-section {
+        .integration-title {
+          font-size: 18px;
+          font-weight: 600;
+          color: #24292e;
+          margin: 0 0 4px 0;
+        }
+        
+        .integration-subtitle {
+          font-size: 14px;
+          color: #586069;
+          margin: 0;
+          line-height: 1.5;
+        }
+      }
+    }
+    
+    .right-section {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+      
+      .connect-btn,
+      .action-btn {
+        mat-icon {
+          margin-right: 6px;
+        }
+      }
+      
+      .expand-btn {
+        margin-left: 4px;
+      }
+    }
+  }
+  
+  .expanded-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e1e4e8;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    
+    button {
+      mat-icon {
+        margin-right: 6px;
+        
+        &.spinning {
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+  }
+  
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 8px;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .integration-card {
+    .integration-row {
+      flex-direction: column;
+      align-items: flex-start;
+      
+      .left-section {
+        width: 100%;
+      }
+      
+      .right-section {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+    }
+  }
+}

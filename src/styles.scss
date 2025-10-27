@@ -1,1 +1,45 @@
-/* You can add global styles to this file, and also import other style files */
+// Use prebuilt Material theme
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+@import 'ag-grid-community/styles/ag-grid.css';
+@import 'ag-grid-community/styles/ag-theme-material.css';
+
+// Global styles - Professional GitHub-like theme
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f5f7fa;
+  margin: 0;
+  color: #24292e;
+}
+
+// Material overrides for cleaner look
+.mat-mdc-raised-button {
+  font-weight: 500 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.mat-mdc-card {
+  border-radius: 8px !important;
+}
+
+// AG Grid customization
+.ag-theme-material {
+  --ag-border-color: #e1e4e8;
+  --ag-header-background-color: #fafbfc;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #f6f8fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.full-width {
+  width: 100%;
+}

@@ -1,0 +1,251 @@
+.data-viewer-section {
+  margin-top: 24px;
+  
+  .main-tabs {
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    
+    ::ng-deep {
+      .mat-mdc-tab-header {
+        border-bottom: 1px solid #e1e4e8;
+        background: #fafbfc;
+      }
+      
+      .mat-mdc-tab-labels {
+        padding: 0 24px;
+      }
+      
+      .mat-mdc-tab {
+        min-width: 160px;
+        font-weight: 500;
+      }
+    }
+  }
+  
+  .tab-content {
+    padding: 24px;
+  }
+  
+  // NEW CLEAN CONTROLS DESIGN
+  .controls-wrapper {
+    margin-bottom: 24px;
+  }
+  
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 2fr;
+    gap: 20px;
+    align-items: start;
+    
+    @media (max-width: 1200px) {
+      grid-template-columns: 200px 1fr;
+      
+      .search-item {
+        grid-column: 1 / -1;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      
+      .search-item {
+        grid-column: auto;
+      }
+    }
+  }
+  
+  .control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    
+    .control-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .control-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #0366d6;
+      }
+      
+      .control-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #24292e;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+    
+    .integration-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #28a745 0%, #22863a 100%);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+      transition: all 0.2s;
+      width: fit-content;
+      
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+      
+      &:hover {
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        transform: translateY(-1px);
+      }
+    }
+  }
+  
+  .data-card,
+  .org-card {
+    background: white;
+    border: 1px solid #e1e4e8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    
+    mat-card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e1e4e8;
+      margin-bottom: 0;
+      
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #24292e;
+        margin: 0;
+        
+        mat-icon {
+          color: #0366d6;
+        }
+      }
+      
+      mat-card-subtitle {
+        margin-top: 4px;
+        font-size: 13px;
+        color: #586069;
+      }
+    }
+    
+    mat-card-content {
+      padding: 0;
+    }
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    
+    mat-icon {
+      font-size: 72px;
+      width: 72px;
+      height: 72px;
+      color: #d1d5da;
+      margin-bottom: 16px;
+    }
+    
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #24292e;
+      margin: 0 0 8px 0;
+    }
+    
+    p {
+      color: #586069;
+      margin: 8px 0;
+      
+      &.hint {
+        font-size: 13px;
+        font-style: italic;
+        color: #0366d6;
+      }
+    }
+  }
+  
+  .org-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 24px;
+    
+    .org-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      transition: all 0.2s;
+      
+      &:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border-color: #0366d6;
+      }
+      
+      .org-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        flex-shrink: 0;
+      }
+      
+      .org-info {
+        flex: 1;
+        
+        h4 {
+          font-size: 16px;
+          font-weight: 600;
+          color: #24292e;
+          margin: 0 0 4px 0;
+        }
+        
+        .org-login {
+          font-size: 13px;
+          color: #586069;
+          margin: 0 0 8px 0;
+        }
+        
+        .org-desc {
+          font-size: 13px;
+          color: #586069;
+          margin: 0 0 12px 0;
+          line-height: 1.4;
+        }
+        
+        .org-stats {
+          display: flex;
+          gap: 12px;
+          
+          span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: #586069;
+            
+            mat-icon {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+            }
+          }
+        }
+      }
+    }
+  }
+}

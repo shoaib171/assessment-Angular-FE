@@ -1,0 +1,130 @@
+@if (isConnected) {
+  <div class="data-viewer-section">
+    <mat-tab-group (selectedIndexChange)="onTabChange($event)" class="main-tabs">
+      <!-- Data Viewer Tab -->
+      <mat-tab label="Data Viewer">
+        <div class="tab-content">
+          <!-- Controls - New Clean Design -->
+          <div class="controls-wrapper">
+            <div class="controls-grid">
+              <!-- Active Integration -->
+              <div class="control-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">verified</mat-icon>
+                  <span class="control-title">Active Integration</span>
+                </div>
+                <div class="integration-badge">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>GitHub</span>
+                </div>
+              </div>
+              
+              <!-- Entity Dropdown -->
+              <div class="control-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">storage</mat-icon>
+                  <span class="control-title">Entity</span>
+                </div>
+                <app-collection-selector
+                  [collections]="collections"
+                  [selectedCollection]="selectedCollection"
+                  (collectionChange)="onCollectionChange($event)">
+                </app-collection-selector>
+              </div>
+              
+              <!-- Search -->
+              <div class="control-item search-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">search</mat-icon>
+                  <span class="control-title">Search</span>
+                </div>
+                <app-search-bar
+                  [searchQuery]="searchQuery"
+                  (searchChange)="onSearchChange($event)">
+                </app-search-bar>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Card -->
+          <mat-card class="data-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>table_chart</mat-icon>
+                @if (selectedCollection) {
+                  {{ selectedCollection | titlecase }}
+                } @else {
+                  Select a Collection
+                }
+              </mat-card-title>
+              @if (selectedCollection && totalRecords > 0) {
+                <mat-card-subtitle>
+                  Showing {{ totalRecords }} total records
+                </mat-card-subtitle>
+              }
+            </mat-card-header>
+            
+            <mat-card-content>
+              <app-data-grid
+                [data]="tableData"
+                [columnDefs]="columnDefs"
+                [loading]="loading"
+                [currentPage]="currentPage"
+                [pageSize]="pageSize"
+                [totalRecords]="totalRecords"
+                (pageChange)="onPageChange($event)"
+                (pageSizeChange)="onPageSizeChange($event)"
+                (sortChange)="onSortChange($event)">
+              </app-data-grid>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- Organizations Tab -->
+      <mat-tab label="Organizations">
+        <div class="tab-content">
+          <mat-card class="org-card">
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>business</mat-icon>
+                Your Organizations
+              </mat-card-title>
+            </mat-card-header>
+            
+            <mat-card-content>
+              @if (loadingOrgs) {
+                <app-loading-spinner></app-loading-spinner>
+              } @else if (organizations.length === 0) {
+                <div class="empty-state">
+                  <mat-icon>inbox</mat-icon>
+                  <h3>No Organizations Found</h3>
+                  <p>You don't have any organizations associated with your GitHub account, or you haven't synced your data yet.</p>
+                  <p class="hint">Click "Re-sync Integration" above to fetch your latest GitHub data.</p>
+                </div>
+              } @else {
+                <div class="org-grid">
+                  @for (org of organizations; track org.id || org.login) {
+                    <div class="org-item">
+                      @if (org.avatar_url) {
+                        <img [src]="org.avatar_url" [alt]="org.name || org.login" class="org-avatar">
+                      }
+                      <div class="org-info">
+                        <h4>{{ org.name || org.login }}</h4>
+                        <p class="org-login">&#64;{{ org.login }}</p>
+                        <p class="org-desc">{{ org.description || 'No description' }}</p>
+                        <div class="org-stats">
+                          <span><mat-icon>folder</mat-icon> {{ org.public_repos || 0 }} repos</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+}

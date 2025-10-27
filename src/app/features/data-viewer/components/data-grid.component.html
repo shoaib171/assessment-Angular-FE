@@ -1,0 +1,76 @@
+<div class="data-grid-container">
+  @if (loading) {
+    <div class="loading-overlay">
+      <app-loading-spinner></app-loading-spinner>
+    </div>
+  }
+
+  @if (!loading && data.length === 0) {
+    <div class="empty-state">
+      <mat-icon>inbox</mat-icon>
+      <h3>No Data Available</h3>
+      @if (columnDefs.length === 0) {
+        <p>Select a collection to view data</p>
+      } @else {
+        <p>No records found in this collection</p>
+      }
+    </div>
+  }
+
+  @if (!loading && data.length > 0) {
+    <div class="grid-wrapper">
+      <ag-grid-angular
+        class="ag-theme-material"
+        [rowData]="data"
+        [columnDefs]="columnDefs"
+        [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        [domLayout]="'autoHeight'">
+      </ag-grid-angular>
+
+      <div class="pagination-container">
+        <div class="pagination-info">
+          <span class="records-count">
+            <strong>{{ getStartRecord() }}</strong> to 
+            <strong>{{ getEndRecord() }}</strong> of 
+            <strong>{{ totalRecords }}</strong> records
+          </span>
+          
+          <mat-form-field appearance="outline" class="page-size-selector">
+            <mat-label>Per Page</mat-label>
+            <mat-select 
+              [value]="pageSize" 
+              (selectionChange)="onPageSizeChangeEvent($event.value)">
+              @for (size of pageSizeOptions; track size) {
+                <mat-option [value]="size">{{ size }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="pagination-controls">
+          <button 
+            mat-icon-button 
+            [disabled]="currentPage === 1"
+            (click)="onPreviousPage()"
+            matTooltip="Previous Page">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          
+          <span class="page-indicator">
+            Page <strong>{{ currentPage }}</strong> of <strong>{{ getTotalPages() }}</strong>
+          </span>
+          
+          <button 
+            mat-icon-button 
+            [disabled]="currentPage >= getTotalPages()"
+            (click)="onNextPage()"
+            matTooltip="Next Page">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
