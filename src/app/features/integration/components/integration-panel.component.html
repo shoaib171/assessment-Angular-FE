@@ -17,8 +17,58 @@
           <h2 class="integration-title">GitHub Integration</h2>
           @if (integrationStatus.connected && integrationStatus.connectedAt) {
             <p class="integration-subtitle">
-              Connected on {{ integrationStatus.connectedAt | formatDate }} by {{ integrationStatus.user?.username || 'github-user' }}
+              Connected on {{ integrationStatus.connectedAt | formatDate }} 
+              by {{ integrationStatus.user?.username || 'github-user' }}
             </p>
+            
+            <!-- Show sync status -->
+            @if (integrationStatus.syncStatus === 'pending') {
+              <p class="sync-status pending">
+                <mat-icon>schedule</mat-icon>
+                Waiting for initial sync
+              </p>
+            } @else if (integrationStatus.syncStatus === 'syncing') {
+              <p class="sync-status syncing">
+                <mat-icon class="spinning">sync</mat-icon>
+                Syncing data...
+              </p>
+            } @else if (integrationStatus.syncStatus === 'success' && integrationStatus.lastSyncedAt) {
+              <p class="sync-status success">
+                <mat-icon>check_circle</mat-icon>
+                Last synced: {{ integrationStatus.lastSyncedAt | formatDate }}
+              </p>
+            } @else if (integrationStatus.syncStatus === 'failed') {
+              <p class="sync-status failed">
+                <mat-icon>error</mat-icon>
+                Last sync failed - Click re-sync to try again
+              </p>
+            }
+            
+            <!-- Show data counts if available -->
+            @if (integrationStatus.dataCounts) {
+              <div class="data-counts">
+                <span class="count-item">
+                  <mat-icon>business</mat-icon>
+                  {{ integrationStatus.dataCounts.organizations }} orgs
+                </span>
+                <span class="count-item">
+                  <mat-icon>folder</mat-icon>
+                  {{ integrationStatus.dataCounts.repos }} repos
+                </span>
+                <span class="count-item">
+                  <mat-icon>commit</mat-icon>
+                  {{ integrationStatus.dataCounts.commits }} commits
+                </span>
+                <span class="count-item">
+                  <mat-icon>merge_type</mat-icon>
+                  {{ integrationStatus.dataCounts.pulls }} PRs
+                </span>
+                <span class="count-item">
+                  <mat-icon>bug_report</mat-icon>
+                  {{ integrationStatus.dataCounts.issues }} issues
+                </span>
+              </div>
+            }
           } @else {
             <p class="integration-subtitle">
               Connect your GitHub account to sync your repositories, commits, issues, and pull requests
@@ -42,14 +92,11 @@
         }
         
         @if (integrationStatus.connected) {
-       
-          
- 
-          
           <button 
             mat-icon-button 
             class="expand-btn"
-            (click)="panelExpanded = !panelExpanded">
+            (click)="panelExpanded = !panelExpanded"
+            matTooltip="Show actions">
             <mat-icon>@if (panelExpanded) { expand_less } @else { expand_more }</mat-icon>
           </button>
         }
@@ -72,7 +119,7 @@
           mat-raised-button 
           color="warn"
           (click)="removeIntegration()"
-          [disabled]="loading">
+          [disabled]="loading || syncing">
           <mat-icon>delete</mat-icon>
           Remove Integration
         </button>

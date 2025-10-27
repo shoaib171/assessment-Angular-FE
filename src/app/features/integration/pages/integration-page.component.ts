@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { IntegrationPanelComponent } from '../components/integration-panel.component';
 import { DataViewerSectionComponent } from '../components/data-viewer-section.component';
+import { GithubIntegrationService } from '../../../core/services/github-integration.service';
 
 @Component({
   selector: 'app-integration-page',
@@ -17,7 +18,6 @@ import { DataViewerSectionComponent } from '../components/data-viewer-section.co
     MatSnackBarModule,
     IntegrationPanelComponent,
     DataViewerSectionComponent
-    
   ],
   template: `
     <div class="integration-page">
@@ -36,6 +36,7 @@ import { DataViewerSectionComponent } from '../components/data-viewer-section.co
       <div class="content-container">
         <!-- Integration Panel -->
         <app-integration-panel 
+          #integrationPanel
           (statusChanged)="onStatusChanged($event)">
         </app-integration-panel>
         
@@ -98,25 +99,36 @@ import { DataViewerSectionComponent } from '../components/data-viewer-section.co
   `]
 })
 export class IntegrationPageComponent implements OnInit {
+  @ViewChild('integrationPanel') integrationPanel!: IntegrationPanelComponent;
+  
   isConnected = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private integrationService: GithubIntegrationService
   ) {}
 
   ngOnInit(): void {
     console.log('🚀 IntegrationPageComponent initialized');
+    
     // Handle OAuth callback
     this.route.queryParams.subscribe(params => {
       console.log('📋 Query params:', params);
+      
       if (params['integrated'] === 'true') {
         console.log('✅ OAuth callback detected - Integration successful!');
+        
         const userId = params['userId'];
+        const autoSync = params['autoSync'] === 'true';
+        
         console.log('👤 User ID:', userId);
+        console.log('🔄 Auto-sync:', autoSync);
+        
         // Show success message
         this.snackBar.open(
-          '✅ GitHub integration successful! Your account has been connected.',
+          '✅ GitHub integration successful! Syncing your data...',
           'Close',
           {
             duration: 5000,
@@ -125,20 +137,38 @@ export class IntegrationPageComponent implements OnInit {
             panelClass: ['success-snackbar']
           }
         );
-        // Clean up URL
+        
+        // Clean up URL first
         this.router.navigate([], {
           relativeTo: this.route,
           queryParams: {},
           replaceUrl: true
         }).then(() => {
-          // Force a reload of the integration status
-          window.location.reload();
+          // Trigger auto-sync after successful OAuth
+          if (autoSync) {
+            console.log('🔄 Triggering automatic sync...');
+            setTimeout(() => {
+              this.performAutoSync();
+            }, 1000);
+          } else {
+            // Just reload to show connected state
+            window.location.reload();
+          }
         });
+        
       } else if (params['error']) {
         console.error('❌ OAuth error:', params['error']);
         
+        const errorMessages: { [key: string]: string } = {
+          'no_code': 'Authorization code not received from GitHub',
+          'token_exchange_failed': 'Failed to exchange code for access token',
+          'auth_failed': 'GitHub authentication failed'
+        };
+        
+        const errorMessage = errorMessages[params['error']] || params['error'];
+        
         this.snackBar.open(
-          `❌ Integration failed: ${params['error']}`,
+          `❌ Integration failed: ${errorMessage}`,
           'Close',
           {
             duration: 5000,
@@ -147,6 +177,7 @@ export class IntegrationPageComponent implements OnInit {
             panelClass: ['error-snackbar']
           }
         );
+        
         // Clean up URL
         this.router.navigate([], {
           relativeTo: this.route,
@@ -160,5 +191,62 @@ export class IntegrationPageComponent implements OnInit {
   onStatusChanged(status: any): void {
     console.log('📊 Integration status changed:', status);
     this.isConnected = status.connected;
+  }
+
+  private performAutoSync(): void {
+    console.log('🔄 Starting automatic data sync...');
+    
+    this.snackBar.open(
+      '🔄 Syncing GitHub data... This may take a few moments.',
+      'Close',
+      {
+        duration: 3000,
+        horizontalPosition: 'end',
+        verticalPosition: 'top',
+        panelClass: ['info-snackbar']
+      }
+    );
+    
+    this.integrationService.resyncIntegration().subscribe({
+      next: (result) => {
+        console.log('✅ Auto-sync completed:', result);
+        
+        this.snackBar.open(
+          `✅ Sync complete! Loaded ${result.organizations} orgs, ${result.repos} repos, ` +
+          `${result.commits} commits, ${result.pulls} PRs, ${result.issues} issues`,
+          'Close',
+          {
+            duration: 5000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['success-snackbar']
+          }
+        );
+        
+        // Reload to show all data
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      },
+      error: (err) => {
+        console.error('❌ Auto-sync failed:', err);
+        
+        this.snackBar.open(
+          '⚠️ Auto-sync failed. Please click "Re-sync Integration" to load your data.',
+          'Close',
+          {
+            duration: 5000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar']
+          }
+        );
+        
+        // Reload anyway to show connected state
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    });
   }
 }

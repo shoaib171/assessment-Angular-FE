@@ -6,9 +6,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { GithubIntegrationService } from '../../../core/services/github-integration.service';
 import { IntegrationStatus } from '../../../core/models/integration.model';
 import { FormatDatePipe } from '../../../shared/pipes/format-date.pipe';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-integration-panel',
@@ -20,6 +22,7 @@ import { FormatDatePipe } from '../../../shared/pipes/format-date.pipe';
     MatIconModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatDialogModule,
     FormatDatePipe
   ],
   templateUrl: './integration-panel.component.html',
@@ -44,7 +47,8 @@ export class IntegrationPanelComponent implements OnInit {
   constructor(
     private integrationService: GithubIntegrationService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -64,12 +68,27 @@ export class IntegrationPanelComponent implements OnInit {
         this.statusChanged.emit(status);
         
         if (status.connected) {
-          this.showSuccessMessage('Integration is active');
+          console.log('✅ Integration is active');
+          console.log('👤 User:', status.user);
+          console.log('📊 Data counts:', status.dataCounts);
+        } else {
+          console.log('⚠️ No active integration');
         }
       },
       error: (err) => {
         console.error('❌ Error checking integration status:', err);
         this.loading = false;
+        
+        // If error, assume not connected
+        this.integrationStatus = {
+          connected: false,
+          connectedAt: null,
+          user: null,
+          lastSyncedAt: null,
+          syncStatus: 'pending',
+          dataCounts: null
+        };
+        this.statusChanged.emit(this.integrationStatus);
         
         const errorMessage = err.error?.error || err.message || 'Failed to check integration status';
         this.showErrorMessage(errorMessage);
@@ -84,35 +103,56 @@ export class IntegrationPanelComponent implements OnInit {
   }
 
   removeIntegration(): void {
-    const confirmed = confirm(
-      '⚠️ Are you sure you want to remove this integration?\n\n' +
-      'This will:\n' +
-      '• Disconnect your GitHub account\n' +
-      '• Delete all synced data from the database\n' +
-      '• Remove all organizations, repos, commits, issues, and pull requests\n\n' +
-      'This action cannot be undone.'
-    );
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '500px',
+      data: {
+        title: 'Remove GitHub Integration',
+        message: `Are you sure you want to remove this integration?\n\nThis will:\n• Disconnect your GitHub account\n• Delete ALL synced data from the database\n• Remove all organizations, repos, commits, issues, and pull requests\n• Delete your user information\n\nThis action cannot be undone.`,
+        confirmText: 'Remove Integration',
+        cancelText: 'Cancel',
+        type: 'danger'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.performRemoveIntegration();
+      }
+    });
+  }
+
+  private performRemoveIntegration(): void {
+    this.loading = true;
+    console.log('🗑️ Removing integration...');
     
-    if (confirmed) {
-      this.loading = true;
-      console.log('🗑️ Removing integration...');
-      
-      this.integrationService.removeIntegration(true).subscribe({
-        next: (result) => {
-          console.log('✅ Integration removed successfully:', result);
-          this.showSuccessMessage('Integration removed successfully');
-          this.panelExpanded = false;
-          this.checkStatus();
-        },
-        error: (err) => {
-          console.error('❌ Error removing integration:', err);
-          this.loading = false;
-          
-          const errorMessage = err.error?.error || err.message || 'Failed to remove integration';
-          this.showErrorMessage(errorMessage);
-        }
-      });
-    }
+    this.integrationService.removeIntegration(true).subscribe({
+      next: (result) => {
+        console.log('✅ Integration removed successfully:', result);
+        
+        // Update status immediately to disconnected
+        this.integrationStatus = {
+          connected: false,
+          connectedAt: null,
+          user: null,
+          lastSyncedAt: null,
+          syncStatus: 'pending',
+          dataCounts: null
+        };
+        
+        this.loading = false;
+        this.panelExpanded = false;
+        this.statusChanged.emit(this.integrationStatus);
+        
+        this.showSuccessMessage('✅ Integration removed successfully. All data has been deleted.');
+      },
+      error: (err) => {
+        console.error('❌ Error removing integration:', err);
+        this.loading = false;
+        
+        const errorMessage = err.error?.error || err.message || 'Failed to remove integration';
+        this.showErrorMessage(errorMessage);
+      }
+    });
   }
 
   resyncIntegration(): void {
@@ -125,23 +165,13 @@ export class IntegrationPanelComponent implements OnInit {
         console.log('✅ Sync completed:', result);
         this.syncing = false;
         
-        const message = `
-          ✅ Sync Successful!\n
-          Organizations: ${result.organizations}\n
-          Repos: ${result.repos}\n
-          Commits: ${result.commits}\n
-          Pull Requests: ${result.pulls}\n
-          Issues: ${result.issues}\n
-          Users: ${result.users}\n
-          Changelogs: ${result.changelogs}
-        `;
-        
         this.showSuccessMessage(
-          `Synced ${result.organizations} orgs, ${result.repos} repos, ` +
+          `✅ Synced: ${result.organizations} orgs, ${result.repos} repos, ` +
           `${result.commits} commits, ${result.pulls} PRs, ${result.issues} issues, ` +
           `${result.users} users, ${result.changelogs} changelogs`,
           5000
         );
+        
         // Refresh status to get updated counts
         this.checkStatus();
       },

@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { GithubDataService } from '../../../core/services/github-data.service';
 import { GithubIntegrationService } from '../../../core/services/github-integration.service';
 import { GithubOrganizationService } from '../../../core/services/github-organization.service';
@@ -22,6 +23,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     MatIconModule,
     MatTabsModule,
     MatButtonModule,
+    MatSnackBarModule,
     TitleCasePipe,
     CollectionSelectorComponent,
     SearchBarComponent,
@@ -34,7 +36,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 export class DataViewerSectionComponent implements OnInit, OnChanges {
   @Input() isConnected = false;
   
-  selectedTab = 0; // 0 = Data Viewer, 1 = Organizations
+  selectedTab = 0;
   
   // Data Viewer
   collections: string[] = [];
@@ -56,7 +58,8 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
   constructor(
     private githubDataService: GithubDataService,
     private integrationService: GithubIntegrationService,
-    private orgService: GithubOrganizationService
+    private orgService: GithubOrganizationService,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -89,9 +92,14 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
       next: (collections) => {
         console.log('✅ Collections loaded:', collections);
         this.collections = collections;
+        
+        if (collections.length > 0) {
+          this.showInfoMessage(`${collections.length} collections available`);
+        }
       },
       error: (err) => {
         console.error('❌ Error loading collections:', err);
+        this.showErrorMessage('Failed to load collections');
       }
     });
   }
@@ -101,7 +109,13 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
     this.selectedCollection = collection;
     this.currentPage = 1;
     this.searchQuery = '';
-    this.loadData();
+    this.tableData = [];
+    this.columnDefs = [];
+    this.totalRecords = 0;
+    
+    if (collection) {
+      this.loadData();
+    }
   }
 
   onSearchChange(query: string): void {
@@ -159,9 +173,13 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
         this.totalRecords = response.total;
         
         if (response.docs.length > 0) {
-          this.generateColumnDefs(this.tableData[0]);
+          this.generateColumnDefs(response.docs[0]);
+          this.showSuccessMessage(
+            `Loaded ${response.docs.length} of ${response.total} records`
+          );
         } else {
           this.columnDefs = [];
+          this.showInfoMessage('No records found');
         }
         
         this.loading = false;
@@ -172,6 +190,9 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
         this.tableData = [];
         this.columnDefs = [];
         this.totalRecords = 0;
+        
+        const errorMessage = err.error?.error || err.message || 'Failed to load data';
+        this.showErrorMessage(errorMessage);
       }
     });
   }
@@ -181,16 +202,10 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
       const transformed: any = {};
       
       for (const key in item) {
-        if (key === '_id' || key === '__v') continue;
+        // Skip internal MongoDB fields
+        if (key === '__v') continue;
         
         const value = item[key];
-        
-        // Handle nested user/owner objects
-        if ((key === 'owner' || key === 'user' || key === 'author') && typeof value === 'object' && value !== null) {
-          transformed[key] = value.login || value.username || value.name || 'Unknown';
-          continue;
-        }
-        
         transformed[key] = value;
       }
       
@@ -199,23 +214,66 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
   }
 
   generateColumnDefs(sampleData: any): void {
-    const excludeFields = ['_id', '__v'];
+    const excludeFields = ['__v'];
+    const priorityFields = ['_id', 'name', 'title', 'login', 'state', 'number'];
     
-    this.columnDefs = Object.keys(sampleData)
-      .filter(key => !excludeFields.includes(key))
-      .map(key => ({
+    const allFields = Object.keys(sampleData)
+      .filter(key => !excludeFields.includes(key));
+    
+    // Sort fields: priority fields first, then alphabetically
+    const sortedFields = allFields.sort((a, b) => {
+      const aPriority = priorityFields.indexOf(a);
+      const bPriority = priorityFields.indexOf(b);
+      
+      if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
+      if (aPriority !== -1) return -1;
+      if (bPriority !== -1) return 1;
+      
+      return a.localeCompare(b);
+    });
+    
+    this.columnDefs = sortedFields.map(key => {
+      const colDef: any = {
         field: key,
         headerName: this.formatHeaderName(key),
         sortable: true,
         filter: true,
         resizable: true,
         minWidth: 150
-      }));
+      };
+      
+      // Adjust width for specific fields
+      if (key === '_id') colDef.minWidth = 200;
+      if (key === 'message' || key === 'body' || key === 'description') colDef.minWidth = 300;
+      if (key === 'sha') colDef.minWidth = 120;
+      if (key === 'state' || key === 'merged' || key === 'private') colDef.minWidth = 120;
+      
+      return colDef;
+    });
     
     console.log('📊 Column definitions generated:', this.columnDefs.length, 'columns');
   }
 
   formatHeaderName(field: string): string {
+    // Special cases
+    const specialCases: { [key: string]: string } = {
+      '_id': 'ID',
+      'html_url': 'URL',
+      'avatar_url': 'Avatar',
+      'repos_url': 'Repos URL',
+      'repoId': 'Repository ID',
+      'repoName': 'Repository',
+      'orgId': 'Organization ID',
+      'orgName': 'Organization',
+      'userId': 'User ID',
+      'pullId': 'Pull Request ID',
+      'issueId': 'Issue ID',
+      'sha': 'SHA',
+      'full_name': 'Full Name',
+    };
+    
+    if (specialCases[field]) return specialCases[field];
+    
     return field
       .replace(/_/g, ' ')
       .replace(/([A-Z])/g, ' $1')
@@ -234,12 +292,46 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
         console.log('✅ Organizations loaded:', orgs.length);
         this.organizations = orgs;
         this.loadingOrgs = false;
+        
+        if (orgs.length > 0) {
+          this.showSuccessMessage(`${orgs.length} organizations loaded`);
+        }
       },
       error: (err) => {
         console.error('❌ Error loading organizations:', err);
         this.loadingOrgs = false;
         this.organizations = [];
+        
+        const errorMessage = err.error?.error || err.message || 'Failed to load organizations';
+        this.showErrorMessage(errorMessage);
       }
+    });
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 3000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['success-snackbar']
+    });
+  }
+
+  private showErrorMessage(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 5000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['error-snackbar']
+    });
+  }
+
+  private showInfoMessage(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 2000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['info-snackbar']
     });
   }
 }
