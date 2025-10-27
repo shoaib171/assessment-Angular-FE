@@ -5,14 +5,29 @@ export interface IntegrationStatus {
     username: string;
     name: string;
     avatarUrl?: string;
+    email?: string;
+  } | null;
+  lastSyncedAt?: Date | null;
+  syncStatus?: 'pending' | 'syncing' | 'success' | 'failed';
+  dataCounts?: {
+    organizations: number;
+    repos: number;
+    commits: number;
+    issues: number;
+    pulls: number;
+    users: number;
+    changelogs: number;
   } | null;
 }
 
 export interface SyncResponse {
   message: string;
+  organizations: number;
   repos: number;
+  commits: number;
   issues: number;
   pulls: number;
-  commits: number;
-  orgs: number;
+  users: number;
+  changelogs: number;
+  lastSyncedAt: Date;
 }

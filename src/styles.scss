@@ -43,3 +43,47 @@ body {
 .full-width {
   width: 100%;
 }
+
+
+// Custom Snackbar Styles
+.success-snackbar {
+  .mdc-snackbar__surface {
+    background-color: #28a745 !important;
+  }
+  
+  .mat-mdc-snack-bar-label {
+    color: white !important;
+  }
+  
+  .mat-mdc-button {
+    color: white !important;
+  }
+}
+
+.error-snackbar {
+  .mdc-snackbar__surface {
+    background-color: #d73a49 !important;
+  }
+  
+  .mat-mdc-snack-bar-label {
+    color: white !important;
+  }
+  
+  .mat-mdc-button {
+    color: white !important;
+  }
+}
+
+.info-snackbar {
+  .mdc-snackbar__surface {
+    background-color: #0366d6 !important;
+  }
+  
+  .mat-mdc-snack-bar-label {
+    color: white !important;
+  }
+  
+  .mat-mdc-button {
+    color: white !important;
+  }
+}
