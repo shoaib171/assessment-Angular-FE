@@ -70,7 +70,26 @@ export class GithubIntegrationService {
       })
     );
   }
-
+/**
+   * Sync public organization data
+   * @param orgName - Public GitHub organization name (e.g., 'facebook', 'google')
+   */
+  syncPublicOrganization(orgName: string): Observable<SyncResponse> {
+    const url = `${this.apiUrl}/integrations/sync-org`;
+    const params = new HttpParams().set('orgName', orgName);
+    
+    console.log('🏢 Syncing public organization:', orgName, 'from:', url);
+    
+    return this.http.get<SyncResponse>(url, { params }).pipe(
+      tap(response => {
+        console.log('Organization sync completed:', response);
+      }),
+      catchError(error => {
+        console.error(' Error syncing organization:', error);
+        throw error;
+      })
+    );
+  }
   /**
    * Get sync statistics
    */

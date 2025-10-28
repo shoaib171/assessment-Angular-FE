@@ -2,17 +2,18 @@ import { Component, OnInit, Input, OnChanges, SimpleChanges } from '@angular/cor
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { GithubDataService } from '../../../core/services/github-data.service';
 import { GithubIntegrationService } from '../../../core/services/github-integration.service';
-import { GithubOrganizationService } from '../../../core/services/github-organization.service';
 import { PaginatedResponse } from '../../../core/models/github-data.model';
 import { CollectionSelectorComponent } from '../../data-viewer/components/collection-selector.component';
 import { SearchBarComponent } from '../../data-viewer/components/search-bar.component';
 import { DataGridComponent } from '../../data-viewer/components/data-grid.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+
+import { OrganizationSelectorDialogComponent } from '../../../shared/components/organization-selector-dialog/organization-selector-dialog.component';
 
 @Component({
   selector: 'app-data-viewer-section',
@@ -21,28 +22,309 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     CommonModule,
     MatCardModule,
     MatIconModule,
-    MatTabsModule,
     MatButtonModule,
     MatSnackBarModule,
+    MatDialogModule,
+    MatProgressSpinnerModule,
     TitleCasePipe,
     CollectionSelectorComponent,
     SearchBarComponent,
     DataGridComponent,
-    LoadingSpinnerComponent
+
   ],
-  templateUrl:'./data-viewer-section.component.html',
-  styleUrls: ['./data-viewer-section.component.scss']
+  template: `
+    @if (isConnected) {
+      <div class="data-viewer-section">
+        <mat-card class="data-card">
+          <!-- Controls -->
+          <div class="controls-wrapper">
+            <div class="controls-grid">
+              <!-- Active Integration -->
+              <div class="control-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">verified</mat-icon>
+                  <span class="control-title">Active Integration</span>
+                </div>
+                <div class="integration-badge">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>GitHub</span>
+                </div>
+              </div>
+              
+              <!-- Entity Dropdown -->
+              <div class="control-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">storage</mat-icon>
+                  <span class="control-title">Entity</span>
+                </div>
+                <app-collection-selector
+                  [collections]="collections"
+                  [selectedCollection]="selectedCollection"
+                  (collectionChange)="onCollectionChange($event)">
+                </app-collection-selector>
+              </div>
+              
+              <!-- Search -->
+              <div class="control-item search-item">
+                <div class="control-header">
+                  <mat-icon class="control-icon">search</mat-icon>
+                  <span class="control-title">Search</span>
+                </div>
+                <app-search-bar
+                  [searchQuery]="searchQuery"
+                  (searchChange)="onSearchChange($event)">
+                </app-search-bar>
+              </div>
+            </div>
+          </div>
+
+          <!-- Header with Organization Info -->
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>table_chart</mat-icon>
+              @if (selectedCollection) {
+                {{ selectedCollection | titlecase }}
+                @if (selectedCollection === 'organizations' && currentOrgName) {
+                  <span class="org-badge">{{ currentOrgName }}</span>
+                }
+              } @else {
+                Select a Collection
+              }
+            </mat-card-title>
+            @if (selectedCollection && totalRecords > 0) {
+              <mat-card-subtitle>
+                Showing {{ totalRecords }} total records
+                @if (selectedCollection === 'organizations' && currentOrgName) {
+                  from {{ currentOrgName }}
+                }
+              </mat-card-subtitle>
+            }
+          </mat-card-header>
+          
+          <mat-card-content>
+            <!-- Syncing Overlay -->
+            @if (syncingOrg) {
+              <div class="syncing-overlay">
+                <div class="syncing-content">
+                  <mat-spinner diameter="60"></mat-spinner>
+                  <h3>Fetching Organization Data</h3>
+                  <p>Syncing data for <strong>{{ currentOrgName }}</strong>...</p>
+                  <p class="syncing-details">
+                    This will fetch repos, commits, issues, pull requests, changelogs, and members.
+                    <br>Please wait, this may take 30-60 seconds.
+                  </p>
+                </div>
+              </div>
+            }
+
+            <!-- Data Grid -->
+            <app-data-grid
+              [data]="tableData"
+              [columnDefs]="columnDefs"
+              [loading]="loading"
+              [currentPage]="currentPage"
+              [pageSize]="pageSize"
+              [totalRecords]="totalRecords"
+              (pageChange)="onPageChange($event)"
+              (pageSizeChange)="onPageSizeChange($event)"
+              (sortChange)="onSortChange($event)">
+            </app-data-grid>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    }
+  `,
+  styles: [`
+    .data-viewer-section {
+      margin-top: 24px;
+      
+      .data-card {
+        background: white;
+        border: 1px solid #e1e4e8;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        border-radius: 8px;
+        position: relative;
+        
+        .controls-wrapper {
+          padding: 24px 24px 0 24px;
+        }
+        
+        .controls-grid {
+          display: grid;
+          grid-template-columns: 200px 1fr 2fr;
+          gap: 20px;
+          align-items: start;
+          margin-bottom: 24px;
+          
+          @media (max-width: 1200px) {
+            grid-template-columns: 200px 1fr;
+            
+            .search-item {
+              grid-column: 1 / -1;
+            }
+          }
+          
+          @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+            
+            .search-item {
+              grid-column: auto;
+            }
+          }
+        }
+        
+        .control-item {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          
+          .control-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            
+            .control-icon {
+              font-size: 18px;
+              width: 18px;
+              height: 18px;
+              color: #0366d6;
+            }
+            
+            .control-title {
+              font-size: 13px;
+              font-weight: 600;
+              color: #24292e;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+          }
+          
+          .integration-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #28a745 0%, #22863a 100%);
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+            transition: all 0.2s;
+            width: fit-content;
+            
+            mat-icon {
+              font-size: 18px;
+              width: 18px;
+              height: 18px;
+            }
+          }
+        }
+        
+        mat-card-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid #e1e4e8;
+          margin-bottom: 0;
+          
+          mat-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #24292e;
+            margin: 0;
+            
+            mat-icon {
+              color: #0366d6;
+            }
+
+            .org-badge {
+              display: inline-flex;
+              align-items: center;
+              padding: 4px 12px;
+              background: #0366d6;
+              color: white;
+              border-radius: 12px;
+              font-size: 13px;
+              font-weight: 500;
+              margin-left: 8px;
+            }
+          }
+          
+          mat-card-subtitle {
+            margin-top: 4px;
+            font-size: 13px;
+            color: #586069;
+          }
+        }
+        
+        mat-card-content {
+          padding: 0;
+          position: relative;
+        }
+
+        .syncing-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(255, 255, 255, 0.98);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          border-radius: 0 0 8px 8px;
+
+          .syncing-content {
+            text-align: center;
+            padding: 40px;
+
+            mat-spinner {
+              margin: 0 auto 24px;
+            }
+
+            h3 {
+              font-size: 20px;
+              font-weight: 600;
+              color: #24292e;
+              margin: 0 0 8px 0;
+            }
+
+            p {
+              font-size: 14px;
+              color: #586069;
+              margin: 8px 0;
+              line-height: 1.5;
+
+              strong {
+                color: #0366d6;
+                font-weight: 600;
+              }
+            }
+
+            .syncing-details {
+              font-size: 13px;
+              color: #959da5;
+              max-width: 400px;
+              margin: 16px auto 0;
+            }
+          }
+        }
+      }
+    }
+  `]
 })
 export class DataViewerSectionComponent implements OnInit, OnChanges {
   @Input() isConnected = false;
-  
-  selectedTab = 0;
   
   // Data Viewer
   collections: string[] = [];
   selectedCollection: string = '';
   searchQuery: string = '';
   loading: boolean = false;
+  syncingOrg: boolean = false;
   currentPage: number = 1;
   pageSize: number = 50;
   totalRecords: number = 0;
@@ -50,16 +332,13 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
   columnDefs: any[] = [];
   sortField: string = '';
   sortDirection: 'asc' | 'desc' = 'asc';
-  
-  // Organizations
-  organizations: any[] = [];
-  loadingOrgs = false;
+  currentOrgName: string = '';
 
   constructor(
     private githubDataService: GithubDataService,
     private integrationService: GithubIntegrationService,
-    private orgService: GithubOrganizationService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -76,16 +355,6 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
     }
   }
 
-  onTabChange(index: number): void {
-    this.selectedTab = index;
-    console.log('📑 Tab changed to:', index === 0 ? 'Data Viewer' : 'Organizations');
-    
-    if (index === 1 && this.organizations.length === 0) {
-      this.loadOrganizations();
-    }
-  }
-
-  // Data Viewer Methods
   loadCollections(): void {
     console.log('📚 Loading collections...');
     this.githubDataService.getCollections().subscribe({
@@ -113,9 +382,67 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
     this.columnDefs = [];
     this.totalRecords = 0;
     
-    if (collection) {
+    if (collection === 'organizations') {
+      // Show organization selector dialog
+      this.showOrganizationSelector();
+    } else if (collection) {
       this.loadData();
     }
+  }
+
+  showOrganizationSelector(): void {
+    const dialogRef = this.dialog.open(OrganizationSelectorDialogComponent, {
+      width: '600px',
+      disableClose: false,
+      panelClass: 'org-selector-dialog'
+    });
+
+    dialogRef.afterClosed().subscribe(orgName => {
+      if (orgName) {
+        console.log('✅ Organization selected:', orgName);
+        this.currentOrgName = orgName;
+        this.syncPublicOrganization(orgName);
+      } else {
+        console.log('❌ Organization selection cancelled');
+        // Reset selection
+        this.selectedCollection = '';
+        this.showInfoMessage('Organization selection cancelled');
+      }
+    });
+  }
+
+  syncPublicOrganization(orgName: string): void {
+    this.syncingOrg = true;
+    console.log('🔄 Syncing public organization:', orgName);
+    
+    this.showInfoMessage(`Fetching data for ${orgName}... This may take 30-60 seconds.`);
+
+    // Call service method to sync public org data
+    this.integrationService.syncPublicOrganization(orgName).subscribe({
+      next: (result: any) => {
+        console.log('✅ Organization sync completed:', result);
+        this.syncingOrg = false;
+        
+        this.showSuccessMessage(
+          `✅ Synced ${orgName}: ${result.organizations || 0} org, ${result.repos || 0} repos, ` +
+          `${result.commits || 0} commits, ${result.pulls || 0} PRs, ${result.issues || 0} issues, ` +
+          `${result.users || 0} users, ${result.changelogs || 0} changelogs`,
+          7000
+        );
+        
+        // Now load the data
+        this.loadData();
+      },
+      error: (err) => {
+        console.error('❌ Organization sync failed:', err);
+        this.syncingOrg = false;
+        this.selectedCollection = '';
+        this.currentOrgName = '';
+        
+        const errorMessage = err.error?.error || err.error?.details || err.message || 'Sync failed';
+        this.showErrorMessage(`Failed to sync ${orgName}: ${errorMessage}`, 7000);
+      }
+    });
   }
 
   onSearchChange(query: string): void {
@@ -202,11 +529,8 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
       const transformed: any = {};
       
       for (const key in item) {
-        // Skip internal MongoDB fields
         if (key === '__v') continue;
-        
-        const value = item[key];
-        transformed[key] = value;
+        transformed[key] = item[key];
       }
       
       return transformed;
@@ -220,7 +544,6 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
     const allFields = Object.keys(sampleData)
       .filter(key => !excludeFields.includes(key));
     
-    // Sort fields: priority fields first, then alphabetically
     const sortedFields = allFields.sort((a, b) => {
       const aPriority = priorityFields.indexOf(a);
       const bPriority = priorityFields.indexOf(b);
@@ -242,7 +565,6 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
         minWidth: 150
       };
       
-      // Adjust width for specific fields
       if (key === '_id') colDef.minWidth = 200;
       if (key === 'message' || key === 'body' || key === 'description') colDef.minWidth = 300;
       if (key === 'sha') colDef.minWidth = 120;
@@ -255,7 +577,6 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
   }
 
   formatHeaderName(field: string): string {
-    // Special cases
     const specialCases: { [key: string]: string } = {
       '_id': 'ID',
       'html_url': 'URL',
@@ -283,52 +604,27 @@ export class DataViewerSectionComponent implements OnInit, OnChanges {
       .join(' ');
   }
 
-  // Organizations Methods
-  loadOrganizations(): void {
-    console.log('🏢 Loading organizations...');
-    this.loadingOrgs = true;
-    this.orgService.getOrganizations().subscribe({
-      next: (orgs) => {
-        console.log('✅ Organizations loaded:', orgs.length);
-        this.organizations = orgs;
-        this.loadingOrgs = false;
-        
-        if (orgs.length > 0) {
-          this.showSuccessMessage(`${orgs.length} organizations loaded`);
-        }
-      },
-      error: (err) => {
-        console.error('❌ Error loading organizations:', err);
-        this.loadingOrgs = false;
-        this.organizations = [];
-        
-        const errorMessage = err.error?.error || err.message || 'Failed to load organizations';
-        this.showErrorMessage(errorMessage);
-      }
-    });
-  }
-
-  private showSuccessMessage(message: string): void {
+  private showSuccessMessage(message: string, duration: number = 3000): void {
     this.snackBar.open(message, 'Close', {
-      duration: 3000,
+      duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
       panelClass: ['success-snackbar']
     });
   }
 
-  private showErrorMessage(message: string): void {
+  private showErrorMessage(message: string, duration: number = 5000): void {
     this.snackBar.open(message, 'Close', {
-      duration: 5000,
+      duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
       panelClass: ['error-snackbar']
     });
   }
 
-  private showInfoMessage(message: string): void {
+  private showInfoMessage(message: string, duration: number = 3000): void {
     this.snackBar.open(message, 'Close', {
-      duration: 2000,
+      duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
       panelClass: ['info-snackbar']

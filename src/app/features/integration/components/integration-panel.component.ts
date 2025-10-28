@@ -23,10 +23,10 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatDialogModule,
-    FormatDatePipe
+    FormatDatePipe,
   ],
   templateUrl: './integration-panel.component.html',
-  styleUrls: ['./integration-panel.component.scss']
+  styleUrls: ['./integration-panel.component.scss'],
 })
 export class IntegrationPanelComponent implements OnInit {
   integrationStatus: IntegrationStatus = {
@@ -35,9 +35,9 @@ export class IntegrationPanelComponent implements OnInit {
     user: null,
     lastSyncedAt: null,
     syncStatus: 'pending',
-    dataCounts: null
+    dataCounts: null,
   };
-  
+
   loading = true;
   syncing = false;
   panelExpanded = false;
@@ -59,14 +59,14 @@ export class IntegrationPanelComponent implements OnInit {
   checkStatus(): void {
     this.loading = true;
     console.log('🔍 Checking integration status...');
-    
+
     this.integrationService.checkIntegrationStatus().subscribe({
       next: (status) => {
         console.log('✅ Integration status loaded:', status);
         this.integrationStatus = status;
         this.loading = false;
         this.statusChanged.emit(status);
-        
+
         if (status.connected) {
           console.log('✅ Integration is active');
           console.log('👤 User:', status.user);
@@ -78,7 +78,7 @@ export class IntegrationPanelComponent implements OnInit {
       error: (err) => {
         console.error('❌ Error checking integration status:', err);
         this.loading = false;
-        
+
         // If error, assume not connected
         this.integrationStatus = {
           connected: false,
@@ -86,13 +86,16 @@ export class IntegrationPanelComponent implements OnInit {
           user: null,
           lastSyncedAt: null,
           syncStatus: 'pending',
-          dataCounts: null
+          dataCounts: null,
         };
         this.statusChanged.emit(this.integrationStatus);
-        
-        const errorMessage = err.error?.error || err.message || 'Failed to check integration status';
+
+        const errorMessage =
+          err.error?.error ||
+          err.message ||
+          'Failed to check integration status';
         this.showErrorMessage(errorMessage);
-      }
+      },
     });
   }
 
@@ -104,17 +107,25 @@ export class IntegrationPanelComponent implements OnInit {
 
   removeIntegration(): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '500px',
+      width: '540px',
+      maxWidth: '90vw',
       data: {
         title: 'Remove GitHub Integration',
-        message: `Are you sure you want to remove this integration?\n\nThis will:\n• Disconnect your GitHub account\n• Delete ALL synced data from the database\n• Remove all organizations, repos, commits, issues, and pull requests\n• Delete your user information\n\nThis action cannot be undone.`,
+        message: 'Are you sure you want to remove this integration?',
+        type: 'danger',
+        consequences: [
+          'Disconnect your GitHub account',
+          'Delete ALL synced data from the database',
+          'Remove all organizations, repos, commits, issues, and pull requests',
+          'Delete your user information',
+        ],
         confirmText: 'Remove Integration',
         cancelText: 'Cancel',
-        type: 'danger'
-      }
+        requireConfirmation: true
+      },
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (confirmed) {
         this.performRemoveIntegration();
       }
@@ -124,11 +135,11 @@ export class IntegrationPanelComponent implements OnInit {
   private performRemoveIntegration(): void {
     this.loading = true;
     console.log('🗑️ Removing integration...');
-    
+
     this.integrationService.removeIntegration(true).subscribe({
       next: (result) => {
         console.log('✅ Integration removed successfully:', result);
-        
+
         // Update status immediately to disconnected
         this.integrationStatus = {
           connected: false,
@@ -136,22 +147,25 @@ export class IntegrationPanelComponent implements OnInit {
           user: null,
           lastSyncedAt: null,
           syncStatus: 'pending',
-          dataCounts: null
+          dataCounts: null,
         };
-        
+
         this.loading = false;
         this.panelExpanded = false;
         this.statusChanged.emit(this.integrationStatus);
-        
-        this.showSuccessMessage('✅ Integration removed successfully. All data has been deleted.');
+
+        this.showSuccessMessage(
+          '✅ Integration removed successfully. All data has been deleted.'
+        );
       },
       error: (err) => {
         console.error('❌ Error removing integration:', err);
         this.loading = false;
-        
-        const errorMessage = err.error?.error || err.message || 'Failed to remove integration';
+
+        const errorMessage =
+          err.error?.error || err.message || 'Failed to remove integration';
         this.showErrorMessage(errorMessage);
-      }
+      },
     });
   }
 
@@ -159,29 +173,33 @@ export class IntegrationPanelComponent implements OnInit {
     this.syncing = true;
     console.log('🔄 Starting data sync...');
     this.showInfoMessage('Syncing GitHub data... This may take a few moments.');
-    
+
     this.integrationService.resyncIntegration().subscribe({
       next: (result) => {
         console.log('✅ Sync completed:', result);
         this.syncing = false;
-        
+
         this.showSuccessMessage(
           `✅ Synced: ${result.organizations} orgs, ${result.repos} repos, ` +
-          `${result.commits} commits, ${result.pulls} PRs, ${result.issues} issues, ` +
-          `${result.users} users, ${result.changelogs} changelogs`,
+            `${result.commits} commits, ${result.pulls} PRs, ${result.issues} issues, ` +
+            `${result.users} users, ${result.changelogs} changelogs`,
           5000
         );
-        
+
         // Refresh status to get updated counts
         this.checkStatus();
       },
       error: (err) => {
         console.error('❌ Sync failed:', err);
         this.syncing = false;
-        
-        const errorMessage = err.error?.error || err.error?.details || err.message || 'Sync failed';
+
+        const errorMessage =
+          err.error?.error ||
+          err.error?.details ||
+          err.message ||
+          'Sync failed';
         this.showErrorMessage(`Sync failed: ${errorMessage}`);
-      }
+      },
     });
   }
 
@@ -190,7 +208,7 @@ export class IntegrationPanelComponent implements OnInit {
       duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
-      panelClass: ['success-snackbar']
+      panelClass: ['success-snackbar'],
     });
   }
 
@@ -199,7 +217,7 @@ export class IntegrationPanelComponent implements OnInit {
       duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
-      panelClass: ['error-snackbar']
+      panelClass: ['error-snackbar'],
     });
   }
 
@@ -208,7 +226,7 @@ export class IntegrationPanelComponent implements OnInit {
       duration,
       horizontalPosition: 'end',
       verticalPosition: 'top',
-      panelClass: ['info-snackbar']
+      panelClass: ['info-snackbar'],
     });
   }
 }
